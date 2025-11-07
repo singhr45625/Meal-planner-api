@@ -15,6 +15,25 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Root route - FIXES THE DEPLOYMENT ISSUE
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Welcome to Meal Planner API',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      meals: '/api/meals',
+      dayPlans: '/api/day-plans',
+      calendar: '/api/calendar',
+      ingredients: '/api/ingredients'
+    },
+    documentation: 'API is ready for use!'
+  });
+});
+
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/meals', require('./routes/meals'));
@@ -27,15 +46,17 @@ app.get('/api/health', (req, res) => {
   res.json({
     success: true,
     message: 'Meal Planner API is running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
-// Handle undefined routes - FIXED for Express 5
+// Handle undefined routes
 app.all('*', (req, res) => {
   res.status(404).json({
     success: false,
-    message: `Route ${req.originalUrl} not found`
+    message: `Route ${req.originalUrl} not found`,
+    suggestion: 'Check available endpoints at the root route (/)'
   });
 });
 
@@ -53,4 +74,6 @@ const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Visit: http://localhost:${PORT}`);
 });
