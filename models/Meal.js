@@ -8,7 +8,7 @@ const mealSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['breakfast', 'lunch', 'dinner'],
+    enum: ['breakfast', 'lunch', 'dinner', 'snack', 'dessert'], // Added more options
     required: true
   },
   description: {
@@ -20,20 +20,31 @@ const mealSchema = new mongoose.Schema({
     required: true
   },
   ingredients: [{
-    ingredient: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Ingredient',
-      required: true
-    },
-    quantity: String
+    ingredient: String,  // Ingredient name as string
+    quantity: String,
+    unit: String
   }],
   prepTime: {
     type: Number, // in minutes
     required: true
   },
+  difficulty: { // Add this field
+    type: String,
+    enum: ['easy', 'medium', 'hard'],
+    default: 'medium'
+  },
   calories: {
     type: Number,
     required: true
+  },
+  servings: { // Add this field
+    type: Number,
+    required: true,
+    default: 1
+  },
+  image: { // Add this field
+    type: String,
+    default: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400'
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -48,13 +59,13 @@ const mealSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Calculate total calories from ingredients
-mealSchema.methods.calculateCalories = function() {
-  let totalCalories = 0;
-  this.ingredients.forEach(item => {
-    totalCalories += item.ingredient.calories;
-  });
-  return totalCalories;
-};
+// Remove the calculateCalories method since we're not using Ingredient model for calories
+// mealSchema.methods.calculateCalories = function() {
+//   let totalCalories = 0;
+//   this.ingredients.forEach(item => {
+//     totalCalories += item.ingredient.calories;
+//   });
+//   return totalCalories;
+// };
 
 module.exports = mongoose.model('Meal', mealSchema);
