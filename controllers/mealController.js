@@ -16,6 +16,10 @@ exports.createMeal = async (req, res) => {
       isPublic 
     } = req.body;
     
+    // DEBUG: Check what image data we're receiving
+    console.log('Received image data:', image);
+    console.log('Image length:', image ? image.length : 0);
+    
     // Validate required fields
     if (!name || !type || !description || !recipe || !prepTime || !calories || !servings) {
       return res.status(400).json({
@@ -42,6 +46,17 @@ exports.createMeal = async (req, res) => {
       }
     }
 
+    // FIXED: Better image handling
+    let finalImage = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400'; // default
+    
+    // Check if image exists and is not empty
+    if (image && image.trim() !== '' && image !== 'default-image-url') {
+      finalImage = image.trim();
+      console.log('Using uploaded image:', finalImage);
+    } else {
+      console.log('No valid image provided, using default');
+    }
+
     const meal = await Meal.create({
       name: name.trim(),
       type: type.toLowerCase(),
@@ -55,10 +70,12 @@ exports.createMeal = async (req, res) => {
       prepTime: parseInt(prepTime),
       calories: parseInt(calories),
       servings: parseInt(servings),
-      image: image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
+      image: finalImage, // Use the properly handled image
       isPublic: isPublic || false,
       createdBy: req.user._id
     });
+    
+    console.log('Meal created with image:', meal.image);
     
     res.status(201).json({
       success: true,
@@ -73,6 +90,7 @@ exports.createMeal = async (req, res) => {
   }
 };
 
+// ... rest of your functions remain the same
 exports.getUserMeals = async (req, res) => {
   try {
     const meals = await Meal.find({ createdBy: req.user._id })
@@ -216,18 +234,15 @@ exports.getPublicMeals = async (req, res) => {
   }
 };
 
-// In controllers/mealController.js
-// In controllers/mealController.js - FIXED getAllMeals
 exports.getAllMeals = async (req, res) => {
   try {
-    // Use createdBy instead of user to match your schema
     const meals = await Meal.find({
       $or: [
-        { createdBy: req.user._id }, // FIXED: changed 'user' to 'createdBy'
+        { createdBy: req.user._id },
         { isPublic: true }
       ]
     })
-    .populate('createdBy', 'name email') // FIXED: changed 'user' to 'createdBy'
+    .populate('createdBy', 'name email')
     .sort({ createdAt: -1 });
     
     res.json({
@@ -245,9 +260,6 @@ exports.getAllMeals = async (req, res) => {
   }
 };
 
-// Then add it to your exports and use it in the routes
-
-// Get meals by type
 exports.getMealsByType = async (req, res) => {
   try {
     const { type } = req.params;
