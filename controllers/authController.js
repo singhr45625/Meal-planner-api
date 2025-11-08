@@ -42,6 +42,14 @@ exports.register = async (req, res) => {
         message: 'User already exists with this email'
       });
     }
+
+    let profileImageUrl = null;
+    if (profileImage && profileImage.startsWith('data:image')) {
+      profileImageUrl = profileImage;
+      console.log('Base64 image received, length:', profileImage.length);
+    } else if (profileImage) {
+      profileImageUrl = profileImage;
+    }
     
     const user = await User.create({
       name,
