@@ -217,15 +217,18 @@ exports.getPublicMeals = async (req, res) => {
 };
 
 // In controllers/mealController.js
+// In controllers/mealController.js - FIXED getAllMeals
 exports.getAllMeals = async (req, res) => {
   try {
-    // This could return user's meals + public meals, or just user's meals
+    // Use createdBy instead of user to match your schema
     const meals = await Meal.find({
       $or: [
-        { user: req.user.id },
+        { createdBy: req.user._id }, // FIXED: changed 'user' to 'createdBy'
         { isPublic: true }
       ]
-    }).populate('user', 'name email');
+    })
+    .populate('createdBy', 'name email') // FIXED: changed 'user' to 'createdBy'
+    .sort({ createdAt: -1 });
     
     res.json({
       success: true,
@@ -233,6 +236,7 @@ exports.getAllMeals = async (req, res) => {
       data: meals
     });
   } catch (error) {
+    console.error('Get all meals error:', error);
     res.status(500).json({
       success: false,
       message: 'Server Error',
