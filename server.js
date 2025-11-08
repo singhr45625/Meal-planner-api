@@ -15,6 +15,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.use('/api/upload', require('./routes/upload'));
+app.use('/uploads', express.static('uploads')); 
+
 // Root route - FIXES THE DEPLOYMENT ISSUE
 app.get('/', (req, res) => {
   res.json({
