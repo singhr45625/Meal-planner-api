@@ -7,9 +7,33 @@ const signToken = (id) => {
   });
 };
 
+const createSendToken = (user, statusCode, res) => {
+  const token = signToken(user._id);
+  
+  // Remove password from output
+  user.password = undefined;
+  
+  res.status(statusCode).json({
+    success: true,
+    token,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      profileImage: user.profileImage,
+      dailyCalorieTarget: user.dailyCalorieTarget,
+      mealsCooked: user.mealsCooked,
+      cookingStreak: user.cookingStreak,
+      dietaryPreferences: user.dietaryPreferences,
+      favoriteRecipes: user.favoriteRecipes,
+      createdAt: user.createdAt
+    }
+  });
+};
+
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, dailyCalorieTarget } = req.body;
+    const { name, email, password, dailyCalorieTarget, profileImage } = req.body;
     
     const userExists = await User.findOne({ email });
     if (userExists) {
@@ -23,21 +47,11 @@ exports.register = async (req, res) => {
       name,
       email,
       password,
+      profileImage: profileImage || null,
       dailyCalorieTarget: dailyCalorieTarget || 2000
     });
     
-    const token = signToken(user._id);
-    
-    res.status(201).json({
-      success: true,
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        dailyCalorieTarget: user.dailyCalorieTarget
-      }
-    });
+    createSendToken(user, 201, res);
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -66,16 +80,51 @@ exports.login = async (req, res) => {
       });
     }
     
-    const token = signToken(user._id);
+    createSendToken(user, 200, res);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Add this new controller for updating user profile
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, dailyCalorieTarget, profileImage, dietaryPreferences } = req.body;
+    const userId = req.user.id;
+    
+    const user = await User.findByIdAndUpdate(
+      userId,
+      {
+        name,
+        dailyCalorieTarget,
+        profileImage,
+        dietaryPreferences
+      },
+      { new: true, runValidators: true }
+    );
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
     
     res.json({
       success: true,
-      token,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
-        dailyCalorieTarget: user.dailyCalorieTarget
+        profileImage: user.profileImage,
+        dailyCalorieTarget: user.dailyCalorieTarget,
+        dietaryPreferences: user.dietaryPreferences,
+        mealsCooked: user.mealsCooked,
+        cookingStreak: user.cookingStreak,
+        createdAt: user.createdAt
       }
     });
   } catch (error) {

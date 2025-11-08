@@ -18,6 +18,25 @@ const userSchema = new mongoose.Schema({
     required: true,
     minlength: 6
   },
+  profileImage: {
+    type: String,
+    default: null
+  },
+  mealsCooked: {
+    type: Number,
+    default: 0
+  },
+  favoriteRecipes: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Meal'
+  }],
+  cookingStreak: {
+    type: Number,
+    default: 0
+  },
+  dietaryPreferences: [{
+    type: String
+  }],
   dailyCalorieTarget: {
     type: Number,
     default: 2000
