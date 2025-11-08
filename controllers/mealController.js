@@ -216,6 +216,33 @@ exports.getPublicMeals = async (req, res) => {
   }
 };
 
+// In controllers/mealController.js
+exports.getAllMeals = async (req, res) => {
+  try {
+    // This could return user's meals + public meals, or just user's meals
+    const meals = await Meal.find({
+      $or: [
+        { user: req.user.id },
+        { isPublic: true }
+      ]
+    }).populate('user', 'name email');
+    
+    res.json({
+      success: true,
+      count: meals.length,
+      data: meals
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server Error',
+      error: error.message
+    });
+  }
+};
+
+// Then add it to your exports and use it in the routes
+
 // Get meals by type
 exports.getMealsByType = async (req, res) => {
   try {
