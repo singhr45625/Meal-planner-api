@@ -20,7 +20,7 @@ const createSendToken = (user, statusCode, res) => {
       id: user._id,
       name: user.name,
       email: user.email,
-      profileImage: user.profileImage,
+      profileImage: user.profileImage, // Make sure this is included
       dailyCalorieTarget: user.dailyCalorieTarget,
       mealsCooked: user.mealsCooked,
       cookingStreak: user.cookingStreak,
@@ -43,19 +43,12 @@ exports.register = async (req, res) => {
       });
     }
 
-    let profileImageUrl = null;
-    if (profileImage && profileImage.startsWith('data:image')) {
-      profileImageUrl = profileImage;
-      console.log('Base64 image received, length:', profileImage.length);
-    } else if (profileImage) {
-      profileImageUrl = profileImage;
-    }
-    
+    // Create user with profile image
     const user = await User.create({
       name,
       email,
       password,
-      profileImage: profileImage || null,
+      profileImage: profileImage || null, // Store the image (base64 or URL)
       dailyCalorieTarget: dailyCalorieTarget || 2000
     });
     
@@ -97,20 +90,21 @@ exports.login = async (req, res) => {
   }
 };
 
-// Add this new controller for updating user profile
+// Update profile controller - FIXED
 exports.updateProfile = async (req, res) => {
   try {
     const { name, dailyCalorieTarget, profileImage, dietaryPreferences } = req.body;
     const userId = req.user.id;
     
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (dailyCalorieTarget) updateData.dailyCalorieTarget = dailyCalorieTarget;
+    if (profileImage !== undefined) updateData.profileImage = profileImage; // Allow null to remove image
+    if (dietaryPreferences) updateData.dietaryPreferences = dietaryPreferences;
+    
     const user = await User.findByIdAndUpdate(
       userId,
-      {
-        name,
-        dailyCalorieTarget,
-        profileImage,
-        dietaryPreferences
-      },
+      updateData,
       { new: true, runValidators: true }
     );
     
@@ -127,11 +121,12 @@ exports.updateProfile = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        profileImage: user.profileImage,
+        profileImage: user.profileImage, // Return the updated image
         dailyCalorieTarget: user.dailyCalorieTarget,
         dietaryPreferences: user.dietaryPreferences,
         mealsCooked: user.mealsCooked,
         cookingStreak: user.cookingStreak,
+        favoriteRecipes: user.favoriteRecipes,
         createdAt: user.createdAt
       }
     });
