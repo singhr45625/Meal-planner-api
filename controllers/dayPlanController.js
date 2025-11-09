@@ -192,3 +192,78 @@ exports.deleteDayPlan = async (req, res) => {
     });
   }
 };
+
+// Add this to your dayPlanController.js
+exports.updateDayPlan = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { breakfast, lunch, dinner, notes } = req.body;
+    
+    // Validate that all meal IDs exist and belong to the user
+    const mealsToCheck = [breakfast, lunch, dinner].filter(Boolean);
+    
+    if (mealsToCheck.length > 0) {
+      const meals = await Meal.find({
+        _id: { $in: mealsToCheck },
+        createdBy: req.user._id
+      });
+      
+      if (meals.length !== mealsToCheck.length) {
+        return res.status(400).json({
+          success: false,
+          message: 'One or more meals not found or not owned by user'
+        });
+      }
+    }
+    
+    const dayPlan = await DayPlan.findById(id);
+    
+    if (!dayPlan) {
+      return res.status(404).json({
+        success: false,
+        message: 'Day plan not found'
+      });
+    }
+    
+    // Check if the day plan belongs to the user
+    if (dayPlan.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update this plan'
+      });
+    }
+    
+    // Update fields
+    if (breakfast !== undefined) dayPlan.meals.breakfast = breakfast;
+    if (lunch !== undefined) dayPlan.meals.lunch = lunch;
+    if (dinner !== undefined) dayPlan.meals.dinner = dinner;
+    if (notes !== undefined) dayPlan.notes = notes;
+    
+    await dayPlan.save();
+    
+    const populatedPlan = await DayPlan.findById(dayPlan._id)
+      .populate({
+        path: 'meals.breakfast',
+        select: 'name type description calories ingredients prepTime'
+      })
+      .populate({
+        path: 'meals.lunch',
+        select: 'name type description calories ingredients prepTime'
+      })
+      .populate({
+        path: 'meals.dinner',
+        select: 'name type description calories ingredients prepTime'
+      });
+    
+    res.json({
+      success: true,
+      data: populatedPlan
+    });
+  } catch (error) {
+    console.error('Error in updateDayPlan:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
