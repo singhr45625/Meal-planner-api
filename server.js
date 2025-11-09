@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const path = require('path'); // ADD THIS LINE
 const connectDB = require('./config/database');
 
 // Load env vars
@@ -11,14 +12,19 @@ connectDB();
 
 const app = express();
 
+// Serve static files from uploads directory - FIXED PATH
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' })); // ADD LIMIT FOR BASE64 IMAGES
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Routes
 app.use('/api/upload', require('./routes/upload'));
-app.use('/uploads', express.static('uploads')); 
+// Remove the duplicate line: app.use('/uploads', express.static('uploads')); 
 
-// Root route - FIXES THE DEPLOYMENT ISSUE
+// Root route
 app.get('/', (req, res) => {
   res.json({
     success: true,
@@ -31,7 +37,8 @@ app.get('/', (req, res) => {
       meals: '/api/meals',
       dayPlans: '/api/day-plans',
       calendar: '/api/calendar',
-      ingredients: '/api/ingredients'
+      ingredients: '/api/ingredients',
+      upload: '/api/upload' // ADD UPLOAD ENDPOINT TO DOCS
     },
     documentation: 'API is ready for use!'
   });
@@ -79,4 +86,5 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Visit: http://localhost:${PORT}`);
+  console.log(`Uploads directory: ${path.join(__dirname, 'uploads')}`);
 });
