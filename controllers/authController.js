@@ -137,3 +137,39 @@ exports.updateProfile = async (req, res) => {
     });
   }
 };
+
+// Add this function to your authController
+exports.getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    // Return user data without password
+    res.json({
+      success: true,
+      data: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        profileImage: user.profileImage,
+        dailyCalorieTarget: user.dailyCalorieTarget,
+        dietaryPreferences: user.dietaryPreferences,
+        mealsCooked: user.mealsCooked,
+        cookingStreak: user.cookingStreak,
+        favoriteRecipes: user.favoriteRecipes,
+        createdAt: user.createdAt
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
