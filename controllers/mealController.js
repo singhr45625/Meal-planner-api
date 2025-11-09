@@ -1,4 +1,6 @@
 const Meal = require('../models/Meal');
+const fs = require('fs').promises;
+const path = require('path');
 
 exports.createMeal = async (req, res) => {
   try {
@@ -16,9 +18,8 @@ exports.createMeal = async (req, res) => {
       isPublic 
     } = req.body;
     
-    // DEBUG: Check what image data we're receiving
-    console.log('Received image data:', image);
-    console.log('Image length:', image ? image.length : 0);
+    console.log('🔍 Received image data type:', typeof image);
+    console.log('📸 Image data preview:', image ? image.substring(0, 100) + '...' : 'No image');
     
     // Validate required fields
     if (!name || !type || !description || !recipe || !prepTime || !calories || !servings) {
@@ -46,17 +47,56 @@ exports.createMeal = async (req, res) => {
       }
     }
 
-    // FIXED: Better image handling
     let finalImage = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400'; // default
     
-    // Check if image exists and is not empty
-    if (image && image.trim() !== '' && image !== 'default-image-url') {
+    // Handle base64 image - save to local filesystem
+    if (image && image.startsWith('data:image/')) {
+      try {
+        console.log('🖼️ Processing base64 image...');
+        
+        // Extract base64 data
+        const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+        const buffer = Buffer.from(base64Data, 'base64');
+        
+        // Create uploads directory if it doesn't exist
+        const uploadsDir = path.join(__dirname, '../uploads');
+        try {
+          await fs.access(uploadsDir);
+        } catch (error) {
+          console.log('📁 Creating uploads directory...');
+          await fs.mkdir(uploadsDir, { recursive: true });
+        }
+        
+        // Generate unique filename
+        const fileExtension = image.split(';')[0].split('/')[1] || 'jpg';
+        const fileName = `meal-${Date.now()}.${fileExtension}`;
+        const filePath = path.join(uploadsDir, fileName);
+        
+        console.log('💾 Saving image to:', filePath);
+        
+        // Save file
+        await fs.writeFile(filePath, buffer);
+        
+        // Create URL for the image
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        finalImage = `${baseUrl}/uploads/${fileName}`;
+        
+        console.log('✅ Image saved successfully:', finalImage);
+        
+      } catch (uploadError) {
+        console.error('❌ Local image save failed:', uploadError);
+        console.log('🔄 Using default image due to upload failure');
+      }
+    } else if (image && image.trim() !== '') {
+      // It's already a URL
       finalImage = image.trim();
-      console.log('Using uploaded image:', finalImage);
+      console.log('🔗 Using provided image URL:', finalImage);
     } else {
-      console.log('No valid image provided, using default');
+      console.log('🖼️ No image provided, using default');
     }
 
+    console.log('🍳 Creating meal with image:', finalImage);
+    
     const meal = await Meal.create({
       name: name.trim(),
       type: type.toLowerCase(),
@@ -68,21 +108,22 @@ exports.createMeal = async (req, res) => {
         unit: ing.unit.trim()
       })),
       prepTime: parseInt(prepTime),
+      difficulty: difficulty.toLowerCase(),
       calories: parseInt(calories),
       servings: parseInt(servings),
-      image: finalImage, // Use the properly handled image
+      image: finalImage,
       isPublic: isPublic || false,
       createdBy: req.user._id
     });
     
-    console.log('Meal created with image:', meal.image);
+    console.log('🎉 Meal created successfully with ID:', meal._id);
     
     res.status(201).json({
       success: true,
       data: meal
     });
   } catch (error) {
-    console.error('Create meal error:', error);
+    console.error('💥 Create meal error:', error);
     res.status(500).json({
       success: false,
       message: error.message
