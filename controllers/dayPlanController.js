@@ -5,19 +5,22 @@ exports.createOrUpdateDayPlan = async (req, res) => {
   try {
     const { date, breakfast, lunch, dinner, notes } = req.body;
     
-    // Validate that all meal IDs exist and belong to the user
+    // FIXED: Validate that all meal IDs exist and are either public or owned by the user
     const mealsToCheck = [breakfast, lunch, dinner].filter(Boolean);
     
     if (mealsToCheck.length > 0) {
       const meals = await Meal.find({
         _id: { $in: mealsToCheck },
-        createdBy: req.user._id
+        $or: [
+          { isPublic: true },
+          { createdBy: req.user._id }
+        ]
       });
       
       if (meals.length !== mealsToCheck.length) {
         return res.status(400).json({
           success: false,
-          message: 'One or more meals not found or not owned by user'
+          message: 'One or more meals not found or not accessible'
         });
       }
     }
@@ -193,25 +196,27 @@ exports.deleteDayPlan = async (req, res) => {
   }
 };
 
-// Add this to your dayPlanController.js
 exports.updateDayPlan = async (req, res) => {
   try {
     const { id } = req.params;
     const { breakfast, lunch, dinner, notes } = req.body;
     
-    // Validate that all meal IDs exist and belong to the user
+    // FIXED: Validate that all meal IDs exist and are either public or owned by the user
     const mealsToCheck = [breakfast, lunch, dinner].filter(Boolean);
     
     if (mealsToCheck.length > 0) {
       const meals = await Meal.find({
         _id: { $in: mealsToCheck },
-        createdBy: req.user._id
+        $or: [
+          { isPublic: true },
+          { createdBy: req.user._id }
+        ]
       });
       
       if (meals.length !== mealsToCheck.length) {
         return res.status(400).json({
           success: false,
-          message: 'One or more meals not found or not owned by user'
+          message: 'One or more meals not found or not accessible'
         });
       }
     }
