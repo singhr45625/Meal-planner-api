@@ -1,4 +1,5 @@
 const Meal = require('../models/Meal');
+const Favorite = require('../models/Favorite');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -277,6 +278,9 @@ exports.getPublicMeals = async (req, res) => {
 
 exports.getAllMeals = async (req, res) => {
   try {
+    const userFavorites = await Favorite.findOne({ user: req.user._id });
+    const favoriteMealIds = userFavorites ? userFavorites.meals.map(id => id.toString()) : [];
+
     const meals = await Meal.find({
       $or: [
         { createdBy: req.user._id },
@@ -285,11 +289,17 @@ exports.getAllMeals = async (req, res) => {
     })
     .populate('createdBy', 'name email')
     .sort({ createdAt: -1 });
+
+    // Add favorite status to each meal
+    const mealsWithFavoriteStatus = meals.map(meal => ({
+      ...meal.toObject(),
+      isFavorite: favoriteMealIds.includes(meal._id.toString())
+    }));
     
     res.json({
       success: true,
       count: meals.length,
-      data: meals
+      data: mealsWithFavoriteStatus
     });
   } catch (error) {
     console.error('Get all meals error:', error);
@@ -320,6 +330,113 @@ exports.getMealsByType = async (req, res) => {
     });
   } catch (error) {
     console.error('Get meals by type error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+exports.toggleFavorite = async (req, res) => {
+  try {
+    const { mealId } = req.params;
+    const userId = req.user._id;
+
+    // Validate meal exists
+    const meal = await Meal.findById(mealId);
+    if (!meal) {
+      return res.status(404).json({
+        success: false,
+        message: 'Meal not found'
+      });
+    }
+
+    // Find or create user's favorites
+    let userFavorites = await Favorite.findOne({ user: userId });
+    
+    if (!userFavorites) {
+      userFavorites = await Favorite.create({ 
+        user: userId, 
+        meals: [] 
+      });
+    }
+
+    // Check if meal is already favorited
+    const isAlreadyFavorited = userFavorites.meals.includes(mealId);
+    
+    if (isAlreadyFavorited) {
+      // Remove from favorites
+      userFavorites.meals = userFavorites.meals.filter(
+        id => id.toString() !== mealId
+      );
+      await userFavorites.save();
+      
+      res.json({
+        success: true,
+        isFavorited: false,
+        message: 'Removed from favorites'
+      });
+    } else {
+      // Add to favorites
+      userFavorites.meals.push(mealId);
+      await userFavorites.save();
+      
+      res.json({
+        success: true,
+        isFavorited: true,
+        message: 'Added to favorites'
+      });
+    }
+  } catch (error) {
+    console.error('Toggle favorite error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Get user's favorite meals
+exports.getUserFavorites = async (req, res) => {
+  try {
+    const userFavorites = await Favorite.findOne({ user: req.user._id })
+      .populate({
+        path: 'meals',
+        populate: {
+          path: 'createdBy',
+          select: 'name email'
+        }
+      });
+
+    res.json({
+      success: true,
+      data: userFavorites ? userFavorites.meals : []
+    });
+  } catch (error) {
+    console.error('Get user favorites error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// Check if a meal is favorited by user
+exports.checkFavoriteStatus = async (req, res) => {
+  try {
+    const { mealId } = req.params;
+    const userId = req.user._id;
+
+    const userFavorites = await Favorite.findOne({ user: userId });
+    const isFavorited = userFavorites ? 
+      userFavorites.meals.includes(mealId) : false;
+
+    res.json({
+      success: true,
+      isFavorited
+    });
+  } catch (error) {
+    console.error('Check favorite status error:', error);
     res.status(500).json({
       success: false,
       message: error.message

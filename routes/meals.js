@@ -8,7 +8,10 @@ const {
   deleteMeal,
   getPublicMeals,
   getMealsByType,
-  getAllMeals // Now this exists and is fixed
+  getAllMeals,
+  toggleFavorite,
+  getUserFavorites,
+  checkFavoriteStatus
 } = require('../controllers/mealController');
 const { protect } = require('../middleware/auth');
 
@@ -25,5 +28,8 @@ router.get('/type/:type', protect, getMealsByType);
 router.get('/:id', protect, getMealById);
 router.put('/:id', protect, updateMeal);
 router.delete('/:id', protect, deleteMeal);
+router.post('/:mealId/favorite', protect, toggleFavorite);
+router.get('/favorites/my-favorites', protect, getUserFavorites);
+router.get('/:mealId/favorite-status', protect, checkFavoriteStatus);
 
 module.exports = router;
