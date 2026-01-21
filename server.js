@@ -1,12 +1,16 @@
+const dotenv = require('dotenv');
+dotenv.config();
+
 const express = require('express');
 const cors = require('cors');
-const dotenv = require('dotenv');
 const path = require('path'); 
 const connectDB = require('./config/database');
 
-// Load env vars
-dotenv.config();
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
 
+// Load env vars
 // Connect to database
 connectDB();
 
