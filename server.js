@@ -3,7 +3,7 @@ dotenv.config();
 
 const express = require('express');
 const cors = require('cors');
-const path = require('path'); 
+const path = require('path');
 const connectDB = require('./config/database');
 
 if (process.env.NODE_ENV !== 'production') {
@@ -86,7 +86,7 @@ app.use((error, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Visit: http://localhost:${PORT}`);
