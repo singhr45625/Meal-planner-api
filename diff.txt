@@ -1,0 +1,13 @@
+﻿diff --git a/ecosystem.config.cjs b/ecosystem.config.cjs
+index e51e3a1..9452324 100644
+--- a/ecosystem.config.cjs
++++ b/ecosystem.config.cjs
+@@ -2,7 +2,7 @@ module.exports = {
+     apps: [
+         {
+             name: "meal-app",
+-            script: "node server.js",
++            script: "./server.js",
+             instances: 1,
+             exec_mode: "fork",
+             watch: false,

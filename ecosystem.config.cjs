@@ -2,7 +2,7 @@ module.exports = {
     apps: [
         {
             name: "meal-app",
-            script: "node server.js",
+            script: "./server.js",
             instances: 1,
             exec_mode: "fork",
             watch: false,
