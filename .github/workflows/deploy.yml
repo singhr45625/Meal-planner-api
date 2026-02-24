@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    name: Prepare Deployment Package
+    name: Build Application
     runs-on: ubuntu-latest
 
     steps:
@@ -17,23 +17,20 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20.x"
+          node-version: "20.13.1"
           cache: "npm"
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Create deployment package
+      - name: Build Application
+        run: npm run build
+
+      - name: Create deployment package (without node_modules)
         run: |
           mkdir -p deploy
-          # Copy source files and folders
-          cp -r controllers deploy/ 2>/dev/null || true
-          cp -r models deploy/ 2>/dev/null || true
-          cp -r routes deploy/ 2>/dev/null || true
-          cp -r middleware deploy/ 2>/dev/null || true
-          cp -r config deploy/ 2>/dev/null || true
-          cp -r uploads deploy/ 2>/dev/null || true
-          cp server.js deploy/
+          cp -r dist/* deploy/
+          # Ensure package.json and ecosystem.config.cjs are present in deploy root if not already
           cp package*.json deploy/
           cp ecosystem.config.cjs deploy/
           # Copy .env.example if exists
@@ -80,7 +77,7 @@ jobs:
             mkdir -p /var/www/express-app
             cd /var/www/express-app
 
-            # Fix ownership first
+            # Fix ownership first (important!)
             echo "Fixing directory ownership..."
             sudo chown -R $USER:$USER /var/www/express-app
             
@@ -93,24 +90,30 @@ jobs:
               ls -t backups/backup_*.tar.gz 2>/dev/null | tail -n +6 | xargs -r rm
             fi
             
-            # Extract new version
+            # Extract new version (this will overwrite existing files)
             echo "Extracting new deployment package..."
             tar --overwrite -xzf /tmp/deploy.tar.gz -C /var/www/express-app
             rm /tmp/deploy.tar.gz
 
-            # Install production dependencies
+            # Fix ownership after extraction
+            sudo chown -R $USER:$USER /var/www/express-app
+            
+            # Install production dependencies on the server
+            echo ""
             echo "Installing production dependencies..."
             npm ci --production
             
-            # Create default .env if missing
+            # Create .env file if needed (only on first deploy)
             if [ ! -f .env ]; then
               echo "Creating default .env file..."
               echo "NODE_ENV=production" > .env
               echo "PORT=5000" >> .env
             fi
             
+            # Create logs directory
+            mkdir -p logs
+            
             # Zero-downtime reload with PM2
-            # Using sudo pm2 to ensure it manages the system-wide processes if applicable
             if sudo pm2 describe meal-app > /dev/null 2>&1; then
               echo "Reloading PM2 app (zero-downtime)..."
               sudo pm2 reload ecosystem.config.cjs --update-env
@@ -134,13 +137,13 @@ jobs:
           echo "Waiting for application to start..."
           sleep 10
 
-          # Check if app responds (trying port 80 as it's likely Nginx managed)
+          # Check if app responds via nginx (try multiple times)
           for i in {1..2}; do
             echo "Attempt $i of 2..."
             response=$(curl -s -o /dev/null -w "%{http_code}" http://${EC2_HOST}/api/health 2>/dev/null || echo "000")
             
-            if [ "$response" = "200" ] || [ "$response" = "301" ] || [ "$response" = "302" ] || [ "$response" = "404" ]; then
-              echo "✅ Deployment successful! Server is responding with status: $response"
+            if [ "$response" = "200" ] || [ "$response" = "301" ] || [ "$response" = "302" ]; then
+              echo "✅ Deployment successful! App is responding with status: $response"
               exit 0
             fi
             
@@ -148,8 +151,9 @@ jobs:
             sleep 5
           done
 
-          echo "⚠️ Deployment verification returned $response. Please check PM2 logs if this is unexpected."
-          exit 0
+          echo "❌ Deployment verification failed after 2 attempts"
+          echo "Please check PM2 logs on the server"
+          exit 1
 
       - name: Rollback on failure
         if: failure()
@@ -168,7 +172,7 @@ jobs:
             
             cd /var/www/express-app
 
-            # Fix ownership
+            # Fix ownership first (important!)
             sudo chown -R $USER:$USER /var/www/express-app
             
             # Find latest backup

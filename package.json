@@ -11,7 +11,8 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "build": "rm -rf dist && mkdir -p dist && cp -r controllers models routes middleware config server.js package.json ecosystem.config.cjs dist/"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
