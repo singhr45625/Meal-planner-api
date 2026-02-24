@@ -88,7 +88,7 @@ jobs:
             if [ -d "package.json" ] || [ -f "server.js" ]; then
               timestamp=$(date +%Y%m%d_%H%M%S)
               mkdir -p backups
-              tar -czf backups/backup_${timestamp}.tar.gz *.js *.json ecosystem.config.cjs controllers models routes middleware config 2>/dev/null || true
+              tar -czf backups/backup_${timestamp}.tar.gz *.js *.json ecosystem.config.cjs controllers models routes middleware config uploads 2>/dev/null || true
               # Keep only last 5 backups
               ls -t backups/backup_*.tar.gz 2>/dev/null | tail -n +6 | xargs -r rm
             fi
@@ -111,7 +111,7 @@ jobs:
             
             # Zero-downtime reload with PM2
             # Using sudo pm2 to ensure it manages the system-wide processes if applicable
-            if sudo pm2 describe express-app > /dev/null 2>&1; then
+            if sudo pm2 describe meal-app > /dev/null 2>&1; then
               echo "Reloading PM2 app (zero-downtime)..."
               sudo pm2 reload ecosystem.config.cjs --update-env
             else
@@ -137,7 +137,7 @@ jobs:
           # Check if app responds (trying port 80 as it's likely Nginx managed)
           for i in {1..2}; do
             echo "Attempt $i of 2..."
-            response=$(curl -s -o /dev/null -w "%{http_code}" http://${EC2_HOST} 2>/dev/null || echo "000")
+            response=$(curl -s -o /dev/null -w "%{http_code}" http://${EC2_HOST}/api/health 2>/dev/null || echo "000")
             
             if [ "$response" = "200" ] || [ "$response" = "301" ] || [ "$response" = "302" ] || [ "$response" = "404" ]; then
               echo "✅ Deployment successful! Server is responding with status: $response"
